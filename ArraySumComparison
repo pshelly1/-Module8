@@ -1,0 +1,89 @@
+import java.util.Random;
+
+class ParallelArraySum implements Runnable {
+    private final int[] array;
+    private final int startIndex;
+    private final int endIndex;
+    private long partialSum;
+
+    public ParallelArraySum(int[] array, int startIndex, int endIndex) {
+        this.array = array;
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
+    }
+
+    public long getPartialSum() {
+        return partialSum;
+    }
+
+    @Override
+    public void run() {
+        partialSum = computeSum();
+    }
+
+    private long computeSum() {
+        long sum = 0;
+        for (int i = startIndex; i < endIndex; i++) {
+            sum += array[i];
+        }
+        return sum;
+    }
+}
+
+public class ArraySumComparison {
+    private static final int ARRAY_SIZE = 200_000_000;
+    private static final int NUM_THREADS = 4;
+
+    public static void main(String[] args) throws InterruptedException {
+        int[] array = generateRandomArray();
+
+        // Parallel array sum
+        long parallelSum = parallelArraySum(array);
+        System.out.println("Parallel Sum: " + parallelSum);
+
+        // Single-threaded array sum
+        long singleThreadedSum = singleThreadedArraySum(array);
+        System.out.println("Single-Threaded Sum: " + singleThreadedSum);
+    }
+
+    private static int[] generateRandomArray() {
+        int[] array = new int[ArraySumComparison.ARRAY_SIZE];
+        Random random = new Random();
+        for (int i = 0; i < ArraySumComparison.ARRAY_SIZE; i++) {
+            array[i] = random.nextInt(10) + 1;
+        }
+        return array;
+    }
+
+    private static long parallelArraySum(int[] array) throws InterruptedException {
+        int chunkSize = array.length / NUM_THREADS;
+        ParallelArraySum[] tasks = new ParallelArraySum[NUM_THREADS];
+        Thread[] threads = new Thread[NUM_THREADS];
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            int startIndex = i * chunkSize;
+            int endIndex = (i == NUM_THREADS - 1) ? array.length : (i + 1) * chunkSize;
+            tasks[i] = new ParallelArraySum(array, startIndex, endIndex);
+            threads[i] = new Thread(tasks[i]);
+            threads[i].start();
+        }
+
+        long sum = 0;
+        for (int i = 0; i < NUM_THREADS; i++) {
+            threads[i].join();
+            sum += tasks[i].getPartialSum();
+        }
+
+        return sum;
+    }
+
+    private static long singleThreadedArraySum(int[] array) {
+        long sum = 0;
+        for (int value : array) {
+            sum += value;
+        }
+        return sum;
+    }
+}
+
+
